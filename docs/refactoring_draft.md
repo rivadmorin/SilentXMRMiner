@@ -282,3 +282,45 @@ This master plan outlines a rigorous, multi-phased approach to rescuing the Sile
 **Immediate Next Step:** Begin Phase 1 by creating the `BuilderConfiguration` model class and mapping the UI elements of `Form1` to it.
 
 *(End of Document - Version 1.1 Draft - Expanded for comprehensive coverage)*
+
+## 12. Complete Codebase Checklist & Gap Analysis
+
+To ensure a comprehensive refactoring plan, the entire codebase has been analyzed. The following checklist identifies all modules and their required transformation steps to achieve the target architecture.
+
+### UI Forms (The Presentation Layer)
+*   [ ] **`Form1.vb` (Main Interface)**
+    *   *Current State:* Contains heavy business logic in `BackgroundWorker2_DoWork`, direct string manipulation for miner arguments, and triggers `Codedom.Compiler`.
+    *   *Refactoring Action:* Strip all logic inside `BackgroundWorker2_DoWork`. It should only instantiate `BuilderConfiguration`, populate it from UI fields, and pass it to a new `BuilderService.RunAsync()` method. Remove all cryptography/encryption methods from the Form class.
+*   [ ] **`Advanced.vb` (Advanced Settings Form)**
+    *   *Current State:* Tightly coupled with `Form1` via the `F` global variable. Contains hardcoded default parameters (`advancedParams`).
+    *   *Refactoring Action:* Refactor to be a dumb view. When it closes, it should return an `AdvancedSettingsModel` object to `Form1`, rather than mutating state globally.
+
+### Build Engine (The Application Logic Layer)
+*   [ ] **`Codedom.vb` (The Core Builder)**
+    *   *Current State:* A massive utility class mixing UI access, Shell execution (`tcc`, `windres`, `donut`), and CodeDOM compilation. It represents the biggest bottleneck for testing and modernization.
+    *   *Refactoring Action:* Break this down into specialized interfaces:
+        *   `IPayloadGenerator`: Handles substituting variables into the C# and C templates.
+        *   `INativeCompiler`: Wraps the execution of `tcc.exe` and `windres.exe` (or replaces them entirely with cross-platform alternatives if possible).
+        *   `IManagedCompiler`: Replaces `CSharpCodeProvider` with Roslyn (`Microsoft.CodeAnalysis`) to compile the Uninstaller and Watchdog.
+        *   `IShellcodeGenerator`: Wraps the `donut` execution.
+
+### Support Modules & Utilities
+*   [ ] **`Theme.vb` (UI Styling)**
+    *   *Current State:* Custom WinForms drawing logic (MephTheme).
+    *   *Refactoring Action:* Leave as-is initially. Low priority for modernization unless moving away from WinForms entirely (e.g., to WPF or Avalonia).
+*   [ ] **Cryptography (`Unamlib_Encrypt`, `AESKEY`, etc. in `Form1.vb`)**
+    *   *Current State:* Cryptographic keys and salts are generated directly in the Form class.
+    *   *Refactoring Action:* Create a dedicated `CryptographyService` (implementing `ICryptographyService`) to handle key generation, payload encryption, and string obfuscation.
+
+### Project Resources & Templates
+*   [ ] **`Resources` Directory (Embedded Payloads)**
+    *   *Current State:* Contains embedded C/C# source code templates (`Program`, `Uninstaller`, `Watchdog`) and binaries (`donut`, `tcc`).
+    *   *Refactoring Action:* Extract the source code templates (.c, .cs files) out of binary resources and store them as plain text files within the project (marked as 'Content' or 'Embedded Resource'). This allows them to be tracked properly by Git and edited without opening the Resource Designer.
+
+### Build Scripts & Tooling
+*   [ ] **`.vbproj` and Build System**
+    *   *Current State:* Legacy .NET Framework 4.5 project file.
+    *   *Refactoring Action:* Convert to SDK-style `<Project Sdk="Microsoft.NET.Sdk">`. Define clear pre-build/post-build events if external tools (`donut`, `tcc`) are still required during development.
+
+---
+*(This checklist guarantees that no part of the monolithic structure is left behind during the migration to a clean, layered architecture.)*
