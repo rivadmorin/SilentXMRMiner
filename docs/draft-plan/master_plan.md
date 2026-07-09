@@ -53,12 +53,12 @@ In `Form1.vb` and `Advanced.vb`, UI event handlers (like button clicks) directly
 
 ### 2.2. Compilation Engine Bottlenecks
 The `Codedom.vb` file acts as the heart of the application, but it is heavily flawed.
-*   **UI Dependency:** Functions like `ReplaceGlobals` reach directly into `Form1` instances (via the global `F` variable) to read control states (e.g., `F.txtStartDelay.Text`). This makes it impossible to run the compilation engine without the UI running.
-*   **String Manipulation:** The codebase relies heavily on manual `StringBuilder` manipulation and hardcoded strings to generate C and C# code on the fly. This approach is brittle and highly prone to syntax errors if a single character is misplaced.
+* **UI Dependency:** Functions like `ReplaceGlobals` reach directly into `Form1` instances (via the global `F` variable) to read control states (e.g., `F.txtStartDelay.Text`). This makes it impossible to run the compilation engine without the UI running.
+* **String Manipulation:** The codebase relies heavily on manual `StringBuilder` manipulation and hardcoded strings to generate C and C# code on the fly. This approach is brittle and highly prone to syntax errors if a single character is misplaced.
 
 ### 2.3. Legacy Dependencies
-*   **System.CodeDom:** The use of `CSharpCodeProvider` for compiling the uninstaller is considered legacy. Modern .NET relies on Roslyn (`Microsoft.CodeAnalysis`) for dynamic compilation.
-*   **External Native Compilers:** The reliance on `tcc` (Tiny C Compiler) and `windres` via shell execution (`cmd.exe`) is fragile and difficult to debug.
+* **System.CodeDom:** The use of `CSharpCodeProvider` for compiling the uninstaller is considered legacy. Modern .NET relies on Roslyn (`Microsoft.CodeAnalysis`) for dynamic compilation.
+* **External Native Compilers:** The reliance on `tcc` (Tiny C Compiler) and `windres` via shell execution (`cmd.exe`) is fragile and difficult to debug.
 
 ---
 
@@ -157,15 +157,15 @@ Dim result = builder.Compile()
 Once the architecture is sound, we clean up the implementation details.
 
 ### 5.1. Naming Conventions & Standardizations
-*   Rename ambiguous variables: `F` -> `MainFormInstance` (before decoupling), `stringb` -> `sourceCodeTemplate`.
-*   Ensure PascalCase for Methods and Properties, camelCase for local variables.
-*   Prefix interface names with `I` (e.g., `ICompilerProvider`).
+* Rename ambiguous variables: `F` -> `MainFormInstance` (before decoupling), `stringb` -> `sourceCodeTemplate`.
+* Ensure PascalCase for Methods and Properties, camelCase for local variables.
+* Prefix interface names with `I` (e.g., `ICompilerProvider`).
 
 ### 5.2. Robust Error Handling Strategy
 The current error handling often just swallows errors or shows generic message boxes.
-*   Implement custom Exceptions (e.g., `CompilationFailedException`, `ResourceMissingException`).
-*   The Builder layer should throw exceptions; the UI layer should catch them and display user-friendly error messages.
-*   Introduce file-based logging (using NLog or Serilog in later phases) to track builder failures.
+* Implement custom Exceptions (e.g., `CompilationFailedException`, `ResourceMissingException`).
+* The Builder layer should throw exceptions; the UI layer should catch them and display user-friendly error messages.
+* Introduce file-based logging (using NLog or Serilog in later phases) to track builder failures.
 
 ### 5.3. Eliminating Magic Strings and Magic Numbers
 Create a static `Constants` class to hold all hardcoded values.
@@ -208,9 +208,9 @@ End Sub
 
 ### 6.3. Mocking File System Operations
 To prevent unit tests from writing actual files to disk, we should abstract file system interactions.
-*   Create an `IFileSystem` interface (`WriteAllText`, `ReadAllBytes`, `Exists`).
-*   Inject `IFileSystem` into `PayloadBuilder`.
-*   In unit tests, pass a mocked file system that records operations in memory.
+* Create an `IFileSystem` interface (`WriteAllText`, `ReadAllBytes`, `Exists`).
+* Inject `IFileSystem` into `PayloadBuilder`.
+* In unit tests, pass a mocked file system that records operations in memory.
 
 ---
 
@@ -220,16 +220,16 @@ This is a major technical leap that prepares the application for the future.
 
 ### 7.1. Project File Transformation (SDK-style)
 The old `.vbproj` format is verbose and hard to manage. We will migrate to the SDK-style format.
-*   Run the .NET Upgrade Assistant tool.
-*   Change TargetFramework to `net8.0-windows`.
-*   Ensure Windows Forms support is enabled (`<UseWindowsForms>true</UseWindowsForms>`).
+* Run the .NET Upgrade Assistant tool.
+* Change TargetFramework to `net8.0-windows`.
+* Ensure Windows Forms support is enabled (`<UseWindowsForms>true</UseWindowsForms>`).
 
 ### 7.2. Addressing Deprecated APIs (System.CodeDom)
 `CSharpCodeProvider` is not recommended in .NET 8. We must replace the uninstaller compilation logic in `Codedom.vb`.
-*   **Solution:** Integrate Roslyn (`Microsoft.CodeAnalysis.CSharp`).
-*   Create a `SyntaxTree` from the uninstaller source code string.
-*   Set up `CSharpCompilation` with references to standard .NET 8 assemblies.
-*   Emit the assembly to a stream or file.
+* **Solution:** Integrate Roslyn (`Microsoft.CodeAnalysis.CSharp`).
+* Create a `SyntaxTree` from the uninstaller source code string.
+* Set up `CSharpCompilation` with references to standard .NET 8 assemblies.
+* Emit the assembly to a stream or file.
 
 ### 7.3. NuGet Dependency Management
 Remove any manual DLL references and replace them with standard NuGet packages where applicable.
@@ -239,8 +239,8 @@ Remove any manual DLL references and replace them with standard NuGet packages w
 ## 8. Phase 5: Language Migration (VB.NET to C#) [Optional but Recommended]
 
 While VB.NET is supported in .NET 8, C# is the dominant language in the ecosystem, offering better tooling, more concise syntax, and wider community support.
-*   Use automated conversion tools (like Telerik Code Converter) on a file-by-file basis.
-*   Manually review and fix up semantic differences (especially regarding implicit type conversions and `ByRef` parameters).
+* Use automated conversion tools (like Telerik Code Converter) on a file-by-file basis.
+* Manually review and fix up semantic differences (especially regarding implicit type conversions and `ByRef` parameters).
 
 ---
 
@@ -249,29 +249,29 @@ While VB.NET is supported in .NET 8, C# is the dominant language in the ecosyste
 ### 9.1. The `Codedom.vb` Transformation
 This file requires the most extensive work.
 
-*   **Step 1: Extract Encryption:** Move `F.Cipher` and related cryptographic functions into a dedicated `CryptographyHelper` class.
-*   **Step 2: Extract External Execution:** Move `F.RunExternalProgram` into a `ProcessRunner` class that handles standard output, error streams, and timeouts properly.
-*   **Step 3: Refactor `Compiler` Method:**
+* **Step 1: Extract Encryption:** Move `F.Cipher` and related cryptographic functions into a dedicated `CryptographyHelper` class.
+* **Step 2: Extract External Execution:** Move `F.RunExternalProgram` into a `ProcessRunner` class that handles standard output, error streams, and timeouts properly.
+* **Step 3: Refactor `Compiler` Method:**
     *   Currently, it reads `My.Resources.Resources.loader`. This is tightly coupled to the UI project's resources.
     *   Change it to accept the template strings as arguments or read them via the abstracted `IFileSystem`.
-*   **Step 4: Secure Randomization:** Ensure random string generators use `RNGCryptoServiceProvider` or `RandomNumberGenerator` instead of `System.Random` for security-sensitive strings.
+* **Step 4: Secure Randomization:** Ensure random string generators use `RNGCryptoServiceProvider` or `RandomNumberGenerator` instead of `System.Random` for security-sensitive strings.
 
 ### 9.2. The `Form1.vb` (Main Form) Transformation
-*   Remove all business logic from button click handlers.
-*   Implement input validation *before* passing data to the model. E.g., ensure pool URL format is correct, numerical fields are valid integers.
-*   Use Data Binding to bind UI controls to the `BuilderConfiguration` model directly, reducing boilerplate mapping code.
+* Remove all business logic from button click handlers.
+* Implement input validation *before* passing data to the model. E.g., ensure pool URL format is correct, numerical fields are valid integers.
+* Use Data Binding to bind UI controls to the `BuilderConfiguration` model directly, reducing boilerplate mapping code.
 
 ### 9.3. The `Advanced.vb` Form Transformation
-*   Similar to `Form1`, extract the state of checkboxes into the configuration model.
-*   Ensure that closing the Advanced form persists the settings back to the main configuration object owned by `Form1`.
+* Similar to `Form1`, extract the state of checkboxes into the configuration model.
+* Ensure that closing the Advanced form persists the settings back to the main configuration object owned by `Form1`.
 
 ---
 
 ## 10. Security and Ethical Considerations
 
-*   **Disclaimer:** This refactoring plan is for **educational analysis only**. We do not condone or support the deployment of silent miners or any software intended to operate without a user's explicit consent.
-*   **Transparency:** A true modernization effort aimed at creating legitimate software would involve entirely removing features like "Process Killer," "Watchdog" (in the context of persistence against user will), and "Shellcode Injection."
-*   **Focus:** The focus of this document is purely on structural software engineering improvements: decoupling, testability, and modern framework adoption.
+* **Disclaimer:** This refactoring plan is for **educational analysis only**. We do not condone or support the deployment of silent miners or any software intended to operate without a user's explicit consent.
+* **Transparency:** A true modernization effort aimed at creating legitimate software would involve entirely removing features like "Process Killer," "Watchdog" (in the context of persistence against user will), and "Shellcode Injection."
+* **Focus:** The focus of this document is purely on structural software engineering improvements: decoupling, testability, and modern framework adoption.
 
 ---
 
@@ -288,15 +288,15 @@ This master plan outlines a rigorous, multi-phased approach to rescuing the Sile
 To ensure a comprehensive refactoring plan, the entire codebase has been analyzed. The following checklist identifies all modules and their required transformation steps to achieve the target architecture.
 
 ### UI Forms (The Presentation Layer)
-*   [ ] **`Form1.vb` (Main Interface)**
+* [ ] **`Form1.vb` (Main Interface)**
     *   *Current State:* Contains heavy business logic in `BackgroundWorker2_DoWork`, direct string manipulation for miner arguments, and triggers `Codedom.Compiler`.
     *   *Refactoring Action:* Strip all logic inside `BackgroundWorker2_DoWork`. It should only instantiate `BuilderConfiguration`, populate it from UI fields, and pass it to a new `BuilderService.RunAsync()` method. Remove all cryptography/encryption methods from the Form class.
-*   [ ] **`Advanced.vb` (Advanced Settings Form)**
+* [ ] **`Advanced.vb` (Advanced Settings Form)**
     *   *Current State:* Tightly coupled with `Form1` via the `F` global variable. Contains hardcoded default parameters (`advancedParams`).
     *   *Refactoring Action:* Refactor to be a dumb view. When it closes, it should return an `AdvancedSettingsModel` object to `Form1`, rather than mutating state globally.
 
 ### Build Engine (The Application Logic Layer)
-*   [ ] **`Codedom.vb` (The Core Builder)**
+* [ ] **`Codedom.vb` (The Core Builder)**
     *   *Current State:* A massive utility class mixing UI access, Shell execution (`tcc`, `windres`, `donut`), and CodeDOM compilation. It represents the biggest bottleneck for testing and modernization.
     *   *Refactoring Action:* Break this down into specialized interfaces:
         *   `IPayloadGenerator`: Handles substituting variables into the C# and C templates.
@@ -305,20 +305,20 @@ To ensure a comprehensive refactoring plan, the entire codebase has been analyze
         *   `IShellcodeGenerator`: Wraps the `donut` execution.
 
 ### Support Modules & Utilities
-*   [ ] **`Theme.vb` (UI Styling)**
+* [ ] **`Theme.vb` (UI Styling)**
     *   *Current State:* Custom WinForms drawing logic (MephTheme).
     *   *Refactoring Action:* Leave as-is initially. Low priority for modernization unless moving away from WinForms entirely (e.g., to WPF or Avalonia).
-*   [ ] **Cryptography (`Unamlib_Encrypt`, `AESKEY`, etc. in `Form1.vb`)**
+* [ ] **Cryptography (`Unamlib_Encrypt`, `AESKEY`, etc. in `Form1.vb`)**
     *   *Current State:* Cryptographic keys and salts are generated directly in the Form class.
     *   *Refactoring Action:* Create a dedicated `CryptographyService` (implementing `ICryptographyService`) to handle key generation, payload encryption, and string obfuscation.
 
 ### Project Resources & Templates
-*   [ ] **`Resources` Directory (Embedded Payloads)**
+* [ ] **`Resources` Directory (Embedded Payloads)**
     *   *Current State:* Contains embedded C/C# source code templates (`Program`, `Uninstaller`, `Watchdog`) and binaries (`donut`, `tcc`).
     *   *Refactoring Action:* Extract the source code templates (.c, .cs files) out of binary resources and store them as plain text files within the project (marked as 'Content' or 'Embedded Resource'). This allows them to be tracked properly by Git and edited without opening the Resource Designer.
 
 ### Build Scripts & Tooling
-*   [ ] **`.vbproj` and Build System**
+* [ ] **`.vbproj` and Build System**
     *   *Current State:* Legacy .NET Framework 4.5 project file.
     *   *Refactoring Action:* Convert to SDK-style `<Project Sdk="Microsoft.NET.Sdk">`. Define clear pre-build/post-build events if external tools (`donut`, `tcc`) are still required during development.
 
@@ -330,27 +330,27 @@ To ensure a comprehensive refactoring plan, the entire codebase has been analyze
 To ensure absolute coverage, below is the comprehensive inventory of every file and directory in the current `SilentXMRMiner` project, along with its specific refactoring destiny mapped in Markdown structure.
 
 ### 📁 Root Directory (`SilentXMRMiner/`)
-*   📄 **`Silent XMR Miner Builder.vbproj`**
+* 📄 **`Silent XMR Miner Builder.vbproj`**
     *   **Action:** Upgrade from legacy `.vbproj` XML format to modern SDK-style format (`<Project Sdk="Microsoft.NET.Sdk">`). Update `TargetFramework` to `net8.0-windows`.
-*   📄 **`Silent XMR Miner Builder.vbproj.user`**
+* 📄 **`Silent XMR Miner Builder.vbproj.user`**
     *   **Action:** Add to `.gitignore`. This is a local user configuration file and should not be tracked or refactored.
-*   📄 **`Theme.vb`**
+* 📄 **`Theme.vb`**
     *   **Action:** Low priority. Retain as-is if staying with WinForms, or deprecate entirely if the UI is rewritten in WPF/Avalonia.
-*   📄 **`Icon.ico`**
+* 📄 **`Icon.ico`**
     *   **Action:** Retain as the application icon.
 
 ### 📁 UI Layer Forms
-*   📄 **`Form1.vb`** (Main Form Code-Behind)
+* 📄 **`Form1.vb`** (Main Form Code-Behind)
     *   **Action:** Strip all encryption logic (`Unamlib_Encrypt`, `AESKEY`), string manipulation for arguments, and build triggers. Refactor to purely handle UI events, construct `BuilderConfiguration` DTOs, and call `BuilderService.BuildAsync()`.
-*   📄 **`Form1.Designer.vb`** & 📄 **`Form1.resx`**
+* 📄 **`Form1.Designer.vb`** & 📄 **`Form1.resx`**
     *   **Action:** Retain. Will be auto-updated by Visual Studio/designer tools during UI adjustments.
-*   📄 **`Advanced.vb`** (Advanced Settings Code-Behind)
+* 📄 **`Advanced.vb`** (Advanced Settings Code-Behind)
     *   **Action:** Remove tight coupling to `Form1` (e.g., the global `F` variable). Refactor to return a configuration object (`AdvancedSettingsModel`) to the parent form upon closing.
-*   📄 **`Advanced.Designer.vb`** & 📄 **`Advanced.resx`**
+* 📄 **`Advanced.Designer.vb`** & 📄 **`Advanced.resx`**
     *   **Action:** Retain. Auto-generated by the designer.
 
 ### 📁 Business Logic & Compilation
-*   📄 **`Codedom.vb`**
+* 📄 **`Codedom.vb`**
     *   **Action:** **DEPRECATE AND SPLIT.** This monolithic file must be broken down into:
         *   `Models/BuilderConfiguration.vb` (Data objects).
         *   `Services/PayloadGeneratorService.vb` (For replacing `#TAGS#` in templates).
@@ -358,25 +358,29 @@ To ensure absolute coverage, below is the comprehensive inventory of every file 
         *   `Services/ManagedCompilerService.vb` (Replacing `CSharpCodeProvider` with Roslyn for Uninstaller/Watchdog).
 
 ### 📁 Project Properties (`SilentXMRMiner/My Project/`)
-*   📄 **`Application.Designer.vb`** & 📄 **`Application.myapp`**
+* 📄 **`Application.Designer.vb`** & 📄 **`Application.myapp`**
     *   **Action:** Retain/Regenerate during the upgrade to SDK-style projects.
-*   📄 **`AssemblyInfo.vb`**
+* 📄 **`AssemblyInfo.vb`**
     *   **Action:** Migrate assembly attributes (Version, Title, etc.) directly into the new `.vbproj` file, which is the standard practice in .NET Core/.NET 8+.
-*   📄 **`Resources.Designer.vb`** & 📄 **`Resources.resx`**
+* 📄 **`Resources.Designer.vb`** & 📄 **`Resources.resx`**
     *   **Action:** Clean up. Remove embedded source code files (.c, .cs) from the binary `.resx` format to allow better version control (see Resources directory plan).
-*   📄 **`Settings.Designer.vb`** & 📄 **`Settings.settings`**
+* 📄 **`Settings.Designer.vb`** & 📄 **`Settings.settings`**
     *   **Action:** Retain if used for saving user preferences across sessions (e.g., remembering the last used pool URL).
-*   📄 **`app.manifest`**
+* 📄 **`app.manifest`**
     *   **Action:** Retain for UAC (User Account Control) execution level requirements.
 
 ### 📁 Embedded Resources & Templates (`SilentXMRMiner/Resources/`)
-*   📄 **`Program.c`** & 📄 **`Program.cs`** & 📄 **`Uninstaller.cs`** & 📄 **`Watchdog.cs`**
+* 📄 **`Program.c`** & 📄 **`Program.cs`** & 📄 **`Uninstaller.cs`** & 📄 **`Watchdog.cs`**
     *   **Action:** Remove these from the `.resx` file. Move them to a new directory (e.g., `SilentXMRMiner/Templates/`) and set their Build Action to `Embedded Resource` or `Content`. This makes them readable plain text in Git rather than base64 strings in a `.resx` XML.
-*   📄 **`resource.rc`** & 📄 **`administrator.manifest-miner`**
+* 📄 **`resource.rc`** & 📄 **`administrator.manifest-miner`**
     *   **Action:** Move to the `Templates/` directory as plain text files for easier manipulation by the new `NativeCompilerService`.
-*   📄 **`Compilers.zip`**, 📄 **`Includes.zip`**, 📄 **`libs.zip`**, 📄 **`xmrig.zip`**
+* 📄 **`Compilers.zip`**, 📄 **`Includes.zip`**, 📄 **`libs.zip`**, 📄 **`xmrig.zip`**
     *   **Action:** Assess if these binary blobs can be replaced by NuGet packages or downloaded dynamically during the build process to reduce repository size. If they must remain, ensure they are extracted securely by the build engine.
-*   📄 **`WinRing0x64.sys`**
+* 📄 **`WinRing0x64.sys`**
     *   **Action:** Retain as an embedded binary resource if required for specific hardware-level mining operations (MSR mod).
-*   📄 **`Monero.ico`**, 📄 **`Monero.png`**, 📄 **`microsoft-admin.png`**
+* 📄 **`Monero.ico`**, 📄 **`Monero.png`**, 📄 **`microsoft-admin.png`**
     *   **Action:** Retain as standard image resources.
+
+## 14. Addendum: Execution Rules
+*   **Draft Code Location:** All experimental or draft code during refactoring must reside in `docs/draft-code/`.
+*   **Documentation Location:** All architectural plans, drafts, and documentation updates must reside in `docs/draft-plan/`.
