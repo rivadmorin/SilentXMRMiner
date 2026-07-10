@@ -22,7 +22,33 @@
     *   6.1. Setting up the Testing Framework
     *   6.2. Unit Testing the Builder Engine
     *   6.3. Mocking File System Operations
-7.  [Phase 4: Framework Migration (.NET Framework 4.5 -> .NET 8)](#7-phase-4-framework-migration-net-framework-45---net-8)
+7.  [Phase 4: Framework Migration (.NET Framework 4.5 -> .NET 8)](#7-phase-4-framework-migration-net-framework-45---
+
+## Phase 0: Refactoring Preparation and Prerequisites
+
+Before modifying a single line of code, the following foundational steps must be completed to ensure a safe and trackable refactoring process.
+
+### 1. Version Control & Baseline Establishment
+*   **Action:** Ensure the current codebase is committed to a Git repository.
+*   **Branching:** Create a dedicated branch for the refactoring effort (e.g., `git checkout -b feature/refactor-architecture`).
+*   **Baseline Build:** Run a complete build of the application in its current state. Verify that the output executable functions as expected. Save this executable as a baseline for future comparison.
+
+### 2. Environment & Tooling Setup
+*   **IDE:** Ensure Visual Studio 2022 (or a modern IDE like Rider) is installed with workloads for both .NET Desktop Development (WinForms) and .NET Core cross-platform development.
+*   **SDKs:** Install the latest .NET 8 SDK, as this is the target framework for the modernized application.
+*   **Code Analysis Tooling:** Install a static analysis tool or linter (like Roslyn analyzers or SonarLint) to establish a baseline for code quality and identify immediate code smells.
+
+### 3. Dependency Inventory
+*   **Internal Dependencies:** Note the reliance on `My Project/Resources.resx` for embedded templates and binaries (`donut`, `tcc`, `windres`).
+*   **External Calls:** Document all external shell calls (e.g., calls to `cmd.exe`, `powershell`, or execution of unpacked compilers). These are critical points of failure during the migration.
+
+### 4. Establishing a Test Harness (Crucial Step)
+*   **Challenge:** The current monolithic structure (`Form1.vb` and `Codedom.vb`) is notoriously difficult to unit test.
+*   **Action:** Create a new xUnit or NUnit test project (`SilentXMRMiner.Tests`).
+*   **Initial Tests:** Write *Integration Tests* or *Characterization Tests*. These tests should execute the existing public methods (like `Codedom.MinerCompiler` if possible, or even just UI input validation functions extracted from `Form1`) with known inputs and assert the expected side effects or file outputs. This provides a safety net during Phase 1.
+
+
+---net-8)
     *   7.1. Project File Transformation (SDK-style)
     *   7.2. Addressing Deprecated APIs (System.CodeDom)
     *   7.3. NuGet Dependency Management
@@ -327,59 +353,84 @@ To ensure a comprehensive refactoring plan, the entire codebase has been analyze
 
 ## 13. Complete File & Directory Refactoring Inventory
 
-To ensure absolute coverage, below is the comprehensive inventory of every file and directory in the current `SilentXMRMiner` project, along with its specific refactoring destiny mapped in Markdown structure.
+To ensure absolute coverage, below is the comprehensive inventory of every file and directory in the current `SilentXMRMiner` project. This section details the *current function* of each file within the legacy monolith, followed by its specific refactoring destiny mapped in Markdown structure.
 
 ### 📁 Root Directory (`SilentXMRMiner/`)
-* 📄 **`Silent XMR Miner Builder.vbproj`**
-    *   **Action:** Upgrade from legacy `.vbproj` XML format to modern SDK-style format (`<Project Sdk="Microsoft.NET.Sdk">`). Update `TargetFramework` to `net8.0-windows`.
-* 📄 **`Silent XMR Miner Builder.vbproj.user`**
-    *   **Action:** Add to `.gitignore`. This is a local user configuration file and should not be tracked or refactored.
-* 📄 **`Theme.vb`**
-    *   **Action:** Low priority. Retain as-is if staying with WinForms, or deprecate entirely if the UI is rewritten in WPF/Avalonia.
-* 📄 **`Icon.ico`**
-    *   **Action:** Retain as the application icon.
+
+*   📄 **`Silent XMR Miner Builder.vbproj`**
+    *   **Current Function:** The legacy MSBuild project file. It dictates how Visual Studio compiles the application, listing all files, references (like System.Windows.Forms), and properties for the .NET Framework 4.5 target.
+    *   **Refactoring Action:** Upgrade from legacy `.vbproj` XML format to modern SDK-style format (`<Project Sdk="Microsoft.NET.Sdk">`). Update `TargetFramework` to `net8.0-windows`.
+*   📄 **`Silent XMR Miner Builder.vbproj.user`**
+    *   **Current Function:** Stores local, user-specific Visual Studio settings (like debugging preferences or window positions).
+    *   **Refactoring Action:** Add to `.gitignore`. This is a local user configuration file and should not be tracked or refactored.
+*   📄 **`Theme.vb`**
+    *   **Current Function:** Contains custom WinForms rendering logic (e.g., `MephTheme`, custom buttons, and tab controls). It overrides standard Windows drawing events to give the application its specific dark/hacker aesthetic.
+    *   **Refactoring Action:** Low priority. Retain as-is if staying with WinForms. If the UI is rewritten in WPF/Avalonia, this file will be deprecated entirely.
+*   📄 **`Icon.ico`**
+    *   **Current Function:** The visual icon used for the Builder application executable.
+    *   **Refactoring Action:** Retain as the application icon.
 
 ### 📁 UI Layer Forms
-* 📄 **`Form1.vb`** (Main Form Code-Behind)
-    *   **Action:** Strip all encryption logic (`Unamlib_Encrypt`, `AESKEY`), string manipulation for arguments, and build triggers. Refactor to purely handle UI events, construct `BuilderConfiguration` DTOs, and call `BuilderService.BuildAsync()`.
-* 📄 **`Form1.Designer.vb`** & 📄 **`Form1.resx`**
-    *   **Action:** Retain. Will be auto-updated by Visual Studio/designer tools during UI adjustments.
-* 📄 **`Advanced.vb`** (Advanced Settings Code-Behind)
-    *   **Action:** Remove tight coupling to `Form1` (e.g., the global `F` variable). Refactor to return a configuration object (`AdvancedSettingsModel`) to the parent form upon closing.
-* 📄 **`Advanced.Designer.vb`** & 📄 **`Advanced.resx`**
-    *   **Action:** Retain. Auto-generated by the designer.
+
+*   📄 **`Form1.vb` (Main Form Code-Behind)**
+    *   **Current Function:** This is the core monolith. It acts as the UI controller, data model, and business logic coordinator. It handles user input for mining pools, generates cryptographic keys (`AESKEY`, `SALT`), encrypts payloads, constructs command-line strings, and initiates the build process via a `BackgroundWorker`. It is deeply entangled with `Codedom.vb`.
+    *   **Refactoring Action:** Strip all encryption logic (`Unamlib_Encrypt`, `AESKEY`), string manipulation for arguments, and build triggers. Refactor to purely handle UI events, construct `BuilderConfiguration` Data Transfer Objects (DTOs), and pass them to a new `BuilderService.BuildAsync()` method.
+*   📄 **`Form1.Designer.vb`** & 📄 **`Form1.resx`**
+    *   **Current Function:** Auto-generated files by Visual Studio. `.Designer.vb` contains the instantiation and positioning of UI controls. `.resx` contains embedded resources specific to the main form (like strings or local images).
+    *   **Refactoring Action:** Retain. Will be auto-updated by Visual Studio/designer tools during UI adjustments.
+*   📄 **`Advanced.vb` (Advanced Settings Code-Behind)**
+    *   **Current Function:** The code-behind for the "Advanced Settings" window. It holds logic for extra parameters (like Shellcode injection, Process Killer). Crucially, it directly mutates the state of `Form1` via a global reference (`Public F As Form1`), representing tight coupling.
+    *   **Refactoring Action:** Remove tight coupling to `Form1`. Refactor to be a passive view that returns a configuration object (`AdvancedSettingsModel`) to the parent form upon closing, rather than modifying global state.
+*   📄 **`Advanced.Designer.vb`** & 📄 **`Advanced.resx`**
+    *   **Current Function:** Auto-generated layout and resources for the Advanced form.
+    *   **Refactoring Action:** Retain. Auto-generated by the designer.
 
 ### 📁 Business Logic & Compilation
-* 📄 **`Codedom.vb`**
-    *   **Action:** **DEPRECATE AND SPLIT.** This monolithic file must be broken down into:
+
+*   📄 **`Codedom.vb`**
+    *   **Current Function:** The primary build engine. It acts as a massive static utility class that executes external compilers (`tcc`, `windres`, `donut`), manages the `CSharpCodeProvider` for compiling .NET payloads, manipulates text templates by replacing `#TAGS#` with encrypted data, and extracts embedded zip resources to the disk. It frequently reads state directly from the UI (`F.txtStartDelay.Text`).
+    *   **Refactoring Action:** **DEPRECATE AND SPLIT.** This monolithic file must be broken down into specific services:
         *   `Models/BuilderConfiguration.vb` (Data objects).
-        *   `Services/PayloadGeneratorService.vb` (For replacing `#TAGS#` in templates).
-        *   `Services/NativeCompilerService.vb` (For executing `tcc` and `windres`).
-        *   `Services/ManagedCompilerService.vb` (Replacing `CSharpCodeProvider` with Roslyn for Uninstaller/Watchdog).
+        *   `Services/PayloadGeneratorService.vb` (For handling `#TAGS#` replacement securely).
+        *   `Services/NativeCompilerService.vb` (For encapsulating `tcc` and `windres` execution).
+        *   `Services/ManagedCompilerService.vb` (Replacing `CSharpCodeProvider` with Roslyn for Uninstaller/Watchdog compilation).
 
 ### 📁 Project Properties (`SilentXMRMiner/My Project/`)
-* 📄 **`Application.Designer.vb`** & 📄 **`Application.myapp`**
-    *   **Action:** Retain/Regenerate during the upgrade to SDK-style projects.
-* 📄 **`AssemblyInfo.vb`**
-    *   **Action:** Migrate assembly attributes (Version, Title, etc.) directly into the new `.vbproj` file, which is the standard practice in .NET Core/.NET 8+.
-* 📄 **`Resources.Designer.vb`** & 📄 **`Resources.resx`**
-    *   **Action:** Clean up. Remove embedded source code files (.c, .cs) from the binary `.resx` format to allow better version control (see Resources directory plan).
-* 📄 **`Settings.Designer.vb`** & 📄 **`Settings.settings`**
-    *   **Action:** Retain if used for saving user preferences across sessions (e.g., remembering the last used pool URL).
-* 📄 **`app.manifest`**
-    *   **Action:** Retain for UAC (User Account Control) execution level requirements.
+
+*   📄 **`Application.Designer.vb`** & 📄 **`Application.myapp`**
+    *   **Current Function:** Controls application-level settings in VB.NET, such as the startup form, splash screens, and application framework configuration.
+    *   **Refactoring Action:** Retain/Regenerate during the upgrade to SDK-style projects.
+*   📄 **`AssemblyInfo.vb`**
+    *   **Current Function:** Holds metadata about the compiled application, such as Title, Description, Version, and Copyright info.
+    *   **Refactoring Action:** Migrate assembly attributes directly into the new `.vbproj` file, which is the modern standard practice in .NET Core/.NET 8+. The file can then be deleted.
+*   📄 **`Resources.Designer.vb`** & 📄 **`Resources.resx`**
+    *   **Current Function:** The centralized resource manager. It embeds large binary files (`Compilers.zip`, `libs.zip`) and raw source code files (`Program.c`, `Watchdog.cs`) into the final Builder executable as base64 strings or binary blobs.
+    *   **Refactoring Action:** Clean up significantly. Remove embedded source code files (.c, .cs) from the binary `.resx` format to allow better version control as plain text files (see Resources directory plan).
+*   📄 **`Settings.Designer.vb`** & 📄 **`Settings.settings`**
+    *   **Current Function:** Manages strongly-typed user settings that persist between application launches.
+    *   **Refactoring Action:** Retain if used for saving user preferences across sessions (e.g., remembering the last used pool URL).
+*   📄 **`app.manifest`**
+    *   **Current Function:** An XML file dictating application privileges, specifically ensuring the application requests UAC (User Account Control) elevation if required by the OS.
+    *   **Refactoring Action:** Retain for execution level requirements.
 
 ### 📁 Embedded Resources & Templates (`SilentXMRMiner/Resources/`)
-* 📄 **`Program.c`** & 📄 **`Program.cs`** & 📄 **`Uninstaller.cs`** & 📄 **`Watchdog.cs`**
-    *   **Action:** Remove these from the `.resx` file. Move them to a new directory (e.g., `SilentXMRMiner/Templates/`) and set their Build Action to `Embedded Resource` or `Content`. This makes them readable plain text in Git rather than base64 strings in a `.resx` XML.
-* 📄 **`resource.rc`** & 📄 **`administrator.manifest-miner`**
-    *   **Action:** Move to the `Templates/` directory as plain text files for easier manipulation by the new `NativeCompilerService`.
-* 📄 **`Compilers.zip`**, 📄 **`Includes.zip`**, 📄 **`libs.zip`**, 📄 **`xmrig.zip`**
-    *   **Action:** Assess if these binary blobs can be replaced by NuGet packages or downloaded dynamically during the build process to reduce repository size. If they must remain, ensure they are extracted securely by the build engine.
-* 📄 **`WinRing0x64.sys`**
-    *   **Action:** Retain as an embedded binary resource if required for specific hardware-level mining operations (MSR mod).
-* 📄 **`Monero.ico`**, 📄 **`Monero.png`**, 📄 **`microsoft-admin.png`**
-    *   **Action:** Retain as standard image resources.
+
+*   📄 **`Program.c`**, 📄 **`Program.cs`**, 📄 **`Uninstaller.cs`**, 📄 **`Watchdog.cs`**
+    *   **Current Function:** These are the raw source code templates for the actual mining payload and its supporting modules. They contain placeholder tags (like `#KEY`, `#ARGSTR`) that `Codedom.vb` replaces before compilation.
+    *   **Refactoring Action:** Remove these from the `.resx` file structure. Move them to a new directory (e.g., `SilentXMRMiner/Templates/`) and set their Build Action to `Embedded Resource` or `Content`. This makes them readable plain text in Git.
+*   📄 **`resource.rc`** & 📄 **`administrator.manifest-miner`**
+    *   **Current Function:** Configuration files used by the native compilers (`windres`) to embed icons and UAC requirements into the final native payloads.
+    *   **Refactoring Action:** Move to the `Templates/` directory as plain text files for easier manipulation by the new `NativeCompilerService`.
+*   📄 **`Compilers.zip`**, 📄 **`Includes.zip`**, 📄 **`libs.zip`**, 📄 **`xmrig.zip`**
+    *   **Current Function:** Compressed archives of external tools (like Tiny C Compiler, Donut) and the XMRig mining engine. `Codedom.vb` extracts these to a temporary folder during the build process.
+    *   **Refactoring Action:** Assess if these binary blobs can be replaced by NuGet packages, submodules, or downloaded dynamically during the build process to reduce repository size. If they must remain, ensure they are managed securely by the build engine.
+*   📄 **`WinRing0x64.sys`**
+    *   **Current Function:** A kernel-level driver used by XMRig for hardware-specific optimizations (MSR modding) to increase hash rates.
+    *   **Refactoring Action:** Retain as an embedded binary resource if required for specific hardware-level mining operations.
+*   📄 **`Monero.ico`**, 📄 **`Monero.png`**, 📄 **`microsoft-admin.png`**
+    *   **Current Function:** Standard graphical assets used within the Builder UI.
+    *   **Refactoring Action:** Retain as standard image resources.
+
 
 ## 14. Addendum: Execution Rules
 *   **Draft Code Location:** All experimental or draft code during refactoring must reside in `docs/draft-code/`.
